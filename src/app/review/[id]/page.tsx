@@ -11,11 +11,20 @@ import gamesData from '../../../../data/games.json';
 export async function generateStaticParams() {
   // 找出所有有 reviewFile 的游戏
   const gamesWithReviews = gamesData.filter(game => game && game.reviewFile);
-  
+
+  // 如果没有任何评测数据，提供一个占位路径以避免 output:export 构建失败
+  // 该占位 id 在 ReviewPage 中会被 notFound() 处理
+  if (gamesWithReviews.length === 0) {
+    return [{ id: '_placeholder' }];
+  }
+
   return gamesWithReviews.map((game) => ({
-    id: game.id,
+    id: String(game.id),
   }));
 }
+
+export const dynamic = 'force-static';
+export const dynamicParams = false;
 
 interface ReviewPageProps {
   params: Promise<{ id: string }>;
