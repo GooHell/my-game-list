@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import FilterBar from '@/components/FilterBar';
 import GameGrid from '@/components/GameGrid';
 import gamesData from '../../data/games.json';
@@ -62,6 +62,15 @@ const TAG_MAPPING: Record<string, string> = {
 
 export default function Home() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const gameListRef = useRef<HTMLDivElement>(null);
+
+  const handleSelectTag = useCallback((tag: string | null) => {
+    setSelectedTag(tag);
+    // 切换标签后平滑滚动到游戏列表区域
+    setTimeout(() => {
+      gameListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }, []);
 
   // 导航栏只显示核心标签（按游戏数量降序排列）
   const displayTags = useMemo(() => {
@@ -170,10 +179,10 @@ export default function Home() {
       <FilterBar 
         tagTiers={displayTags} 
         selectedTag={selectedTag} 
-        onSelectTag={setSelectedTag} 
+        onSelectTag={handleSelectTag} 
       />
       
-      <div className="max-w-7xl mx-auto w-full flex-grow pb-10">
+      <div ref={gameListRef} className="max-w-7xl mx-auto w-full flex-grow pb-10">
         {/* 区域 1：参与研发的项目 (最顶部) */}
         {anchorGames.length > 0 && (
           <div className="mt-8 mb-12">
