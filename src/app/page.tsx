@@ -62,14 +62,20 @@ const TAG_MAPPING: Record<string, string> = {
 
 export default function Home() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const gameListRef = useRef<HTMLDivElement>(null);
 
   const handleSelectTag = useCallback((tag: string | null) => {
     setSelectedTag(tag);
-    // 切换标签后平滑滚动到游戏列表区域
+    setSearchQuery(''); // 切换标签时清空搜索
     setTimeout(() => {
       gameListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
+  }, []);
+
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    if (query) setSelectedTag(null); // 搜索时清除标签筛选
   }, []);
 
   // 导航栏只显示核心标签（按游戏数量降序排列）
@@ -112,6 +118,15 @@ export default function Home() {
   // 核心过滤与分类逻辑 (纯粹依赖底层数据)
   const { anchorGames, mobileGames, normalGames } = useMemo(() => {
     let result = [...gamesData].filter(game => game !== null);
+
+    // 搜索过滤
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(game => 
+        game.title.toLowerCase().includes(q) ||
+        (game.tags && game.tags.some(t => t.toLowerCase().includes(q)))
+      );
+    }
 
     // 标签过滤：选中核心标签时，匹配所有相关的原始标签
     if (selectedTag) {
@@ -159,7 +174,7 @@ export default function Home() {
       mobileGames: mobiles.sort(sortFn),
       normalGames: normals.sort(sortFn)
     };
-  }, [selectedTag]);
+  }, [selectedTag, searchQuery]);
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -179,7 +194,9 @@ export default function Home() {
       <FilterBar 
         tagTiers={displayTags} 
         selectedTag={selectedTag} 
-        onSelectTag={handleSelectTag} 
+        onSelectTag={handleSelectTag}
+        searchQuery={searchQuery}
+        onSearch={handleSearch}
       />
       
       <div ref={gameListRef} className="max-w-7xl mx-auto w-full flex-grow pb-10">

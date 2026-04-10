@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎮 Game List Admin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg-dark: #1b2838;
+      --bg-card: #16202d;
+      --bg-input: #202d39;
+      --border: #2a475e;
+      --text: #c7d5e0;
+      --text-dim: #8f98a0;
+      --accent: #66c0f4;
+      --green: #a4d007;
+      --red: #e74c3c;
+      --orange: #f39c12;
+    }
+    body { background: var(--bg-dark); color: var(--text); font-family: -apple-system, 'Segoe UI', sans-serif; min-height: 100vh; }
+    
+    /* 顶部导航 */
+    .navbar { background: #171a21; border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .navbar h1 { font-size: 18px; color: white; }
+    .navbar h1 span { color: var(--accent); }
+    .nav-actions { display: flex; gap: 8px; }
+    
+    /* 按钮 */
+    .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: linear-gradient(135deg, #47bfff, #1a44c2); color: white; }
+    .btn-primary:hover { box-shadow: 0 0 12px rgba(71,191,255,0.4); }
+    .btn-success { background: var(--green); color: #1b2838; }
+    .btn-success:hover { box-shadow: 0 0 12px rgba(164,208,7,0.4); }
+    .btn-danger { background: var(--red); color: white; }
+    .btn-danger:hover { box-shadow: 0 0 12px rgba(231,76,60,0.4); }
+    .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+    .btn-ghost:hover { color: white; border-color: var(--accent); }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    
+    /* 统计面板 */
+    .stats-bar { display: flex; gap: 16px; padding: 16px 24px; background: var(--bg-card); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .stat-item { display: flex; flex-direction: column; align-items: center; padding: 8px 16px; background: var(--bg-input); border-radius: 6px; border: 1px solid var(--border); min-width: 80px; }
+    .stat-item .num { font-size: 24px; font-weight: 700; color: white; }
+    .stat-item .label { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+    
+    /* 搜索和工具栏 */
+    .toolbar { padding: 16px 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+    .search-box { flex: 1; min-width: 200px; padding: 10px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; color: white; font-size: 14px; outline: none; }
+    .search-box:focus { border-color: var(--accent); }
+    .search-box::placeholder { color: var(--text-dim); }
+    select { padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 13px; outline: none; cursor: pointer; }
+    select:focus { border-color: var(--accent); }
+    
+    /* 游戏表格 */
+    .table-container { padding: 0 24px 24px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th { background: #171a21; color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 12px; text-align: left; border-bottom: 2px solid var(--border); position: sticky; top: 56px; z-index: 10; cursor: pointer; user-select: none; }
+    th:hover { color: var(--accent); }
+    td { padding: 8px 12px; border-bottom: 1px solid #1e2a36; vertical-align: middle; font-size: 13px; }
+    tr:hover td { background: rgba(102,192,244,0.05); }
+    
+    .game-cover-thumb { width: 40px; height: 53px; object-fit: cover; border-radius: 3px; border: 1px solid var(--border); }
+    .game-title { font-weight: 600; color: white; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tag-chip { display: inline-block; padding: 2px 6px; margin: 1px; font-size: 10px; background: var(--bg-input); color: var(--accent); border-radius: 3px; border: 1px solid var(--border); }
+    .tag-chip.special { background: rgba(164,208,7,0.2); color: var(--green); border-color: rgba(164,208,7,0.5); }
+    .status-badge { padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+    .status-cleared { background: rgba(164,208,7,0.2); color: var(--green); }
+    .status-playing { background: rgba(71,191,255,0.2); color: var(--accent); }
+    .status-on-hold { background: rgba(243,156,18,0.2); color: var(--orange); }
+    .status-dropped { background: rgba(231,76,60,0.2); color: var(--red); }
+    .status-completed { background: rgba(164,208,7,0.3); color: var(--green); }
+    
+    /* 模态框 */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+    .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; width: 90%; max-width: 640px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: #171a21; border-radius: 8px 8px 0 0; }
+    .modal-header h2 { font-size: 16px; color: white; }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+    
+    /* 表单 */
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; color: white; font-size: 14px; outline: none; }
+    .form-group input:focus, .form-group textarea:focus { border-color: var(--accent); }
+    .form-group textarea { min-height: 60px; resize: vertical; font-family: inherit; }
+    .form-row { display: flex; gap: 12px; }
+    .form-row .form-group { flex: 1; }
+    .form-hint { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+    
+    .cover-preview { width: 120px; height: 160px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
+    .cover-section { display: flex; gap: 16px; align-items: flex-start; }
+    .cover-actions { display: flex; flex-direction: column; gap: 8px; }
+
+    /* 分页信息 */
+    .page-info { padding: 12px 24px; color: var(--text-dim); font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+    
+    /* Toast 通知 */
+    .toast { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; z-index: 999; animation: slideIn 0.3s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+    .toast-success { background: var(--green); color: #1b2838; }
+    .toast-error { background: var(--red); color: white; }
+    @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* checkbox 样式 */
+    input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <!-- 顶部导航 -->
+  <nav class="navbar">
+    <h1>🎮 <span>Game List</span> Admin</h1>
+    <div class="nav-actions">
+      <button class="btn btn-ghost" onclick="backup()">💾 备份</button>
+      <button class="btn btn-success" onclick="deploy()">🚀 构建部署</button>
+      <button class="btn btn-primary" onclick="openAddModal()">➕ 添加游戏</button>
+    </div>
+  </nav>
+
+  <!-- 统计面板 -->
+  <div class="stats-bar" id="statsBar"></div>
+
+  <!-- 工具栏 -->
+  <div class="toolbar">
+    <input type="text" class="search-box" id="searchBox" placeholder="🔍 搜索游戏名称、标签..." oninput="filterGames()">
+    <select id="statusFilter" onchange="filterGames()">
+      <option value="">全部状态</option>
+      <option value="cleared">已通关</option>
+      <option value="completed">全成就</option>
+      <option value="playing">游玩中</option>
+      <option value="on-hold">搁置</option>
+      <option value="dropped">放弃</option>
+    </select>
+    <select id="coverFilter" onchange="filterGames()">
+      <option value="">全部封面</option>
+      <option value="missing">缺失封面</option>
+      <option value="bing">Bing封面</option>
+    </select>
+    <button class="btn btn-ghost btn-sm" onclick="loadGames()">🔄 刷新</button>
+  </div>
+
+  <!-- 游戏数量 -->
+  <div class="page-info">
+    <span id="gameCount"></span>
+  </div>
+
+  <!-- 游戏表格 -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:50px"></th>
+          <th onclick="sortBy('title')">游戏名称 ↕</th>
+          <th onclick="sortBy('playStatus')">状态 ↕</th>
+          <th>标签</th>
+          <th onclick="sortBy('appId')">AppID ↕</th>
+          <th>封面</th>
+          <th style="width:120px">操作</th>
+        </tr>
+      </thead>
+      <tbody id="gamesTable"></tbody>
+    </table>
+  </div>
+
+  <!-- 编辑模态框 -->
+  <div class="modal-overlay hidden" id="editModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">编辑游戏</h2>
+        <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editId">
+        
+        <div class="cover-section">
+          <img id="editCoverPreview" class="cover-preview" src="" alt="cover">
+          <div class="cover-actions">
+            <div class="form-group" style="margin:0">
+              <label>上传封面</label>
+              <input type="file" id="coverUpload" accept="image/*" onchange="uploadCover()">
+            </div>
+            <div style="display:flex;gap:4px;align-items:flex-end;">
+              <div class="form-group" style="margin:0;flex:1">
+                <label>Steam AppID（输入后回车自动抓取）</label>
+                <input type="text" id="steamAppIdInput" placeholder="如 730" onkeydown="if(event.key==='Enter'){event.preventDefault();autoFetchSteam()}">
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="autoFetchSteam()" style="margin-bottom:0;height:38px">抓取</button>
+            </div>
+            <div id="fetchStatus" style="font-size:11px;color:var(--text-dim);min-height:18px;"></div>
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-top:16px">
+          <div class="form-group">
+            <label>游戏名称</label>
+            <input type="text" id="editTitle">
+          </div>
+          <div class="form-group" style="max-width:160px">
+            <label>AppID</label>
+            <input type="text" id="editAppId">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>游玩状态</label>
+            <select id="editStatus">
+              <option value="cleared">已通关</option>
+              <option value="completed">全成就</option>
+              <option value="playing">游玩中</option>
+              <option value="on-hold">搁置</option>
+              <option value="dropped">放弃</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>游玩时长</label>
+            <input type="text" id="editPlaytime" placeholder="如 120小时">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>标签（逗号分隔）</label>
+          <textarea id="editTags" placeholder="动作, 射击, 多人"></textarea>
+          <div class="form-hint">多个标签用中文或英文逗号分隔</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>排序权重</label>
+            <input type="number" id="editWeight" value="0">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end;gap:16px;padding-bottom:10px;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editAnchor"> 参与研发 🔥</label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="editShowPlaytime"> 显示时长</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>拆解文档</label>
+          <input type="text" id="editReview" placeholder="如 sekiro.md">
+        </div>
+
+        <div class="form-group">
+          <label>备注（不展示）</label>
+          <textarea id="editRemark" placeholder="个人备注"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger btn-sm" id="deleteBtn" onclick="deleteGame()">🗑️ 删除</button>
+        <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveGame()">💾 保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allGames = [];
+    let sortField = '';
+    let sortDir = 1;
+
+    // 初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      loadGames();
+      loadStats();
+    });
+
+    // Toast 通知
+    function toast(msg, type = 'success') {
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.textContent = msg;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 3000);
+    }
+
+    // 加载统计
+    async function loadStats() {
+      const r = await fetch('/api/stats');
+      const s = await r.json();
+      const bar = document.getElementById('statsBar');
+      const statusMap = { cleared: '已通关', playing: '游玩中', completed: '全成就', 'on-hold': '搁置', dropped: '放弃' };
+      bar.innerHTML = `
+        <div class="stat-item"><div class="num">${s.total}</div><div class="label">总游戏</div></div>
+        ${Object.entries(s.statusCount).map(([k, v]) => `
+          <div class="stat-item"><div class="num">${v}</div><div class="label">${statusMap[k] || k}</div></div>
+        `).join('')}
+        <div class="stat-item"><div class="num">${s.anchors}</div><div class="label">参与研发</div></div>
+        <div class="stat-item"><div class="num">${s.reviews}</div><div class="label">有印象</div></div>
+        <div class="stat-item"><div class="num" style="color:${s.missingCovers > 0 ? 'var(--red)' : 'var(--green)'}">${s.missingCovers}</div><div class="label">缺封面</div></div>
+      `;
+    }
+
+    // 加载游戏列表
+    async function loadGames() {
+      const r = await fetch('/api/games');
+      allGames = await r.json();
+      filterGames();
+      loadStats();
+    }
+
+    // 筛选 & 渲染
+    function filterGames() {
+      const search = document.getElementById('searchBox').value.toLowerCase();
+      const status = document.getElementById('statusFilter').value;
+      const coverFilter = document.getElementById('coverFilter').value;
+
+      let filtered = allGames.filter(g => {
+        if (search && !g.title.toLowerCase().includes(search) && !(g.tags || []).some(t => t.toLowerCase().includes(search))) return false;
+        if (status && g.playStatus !== status) return false;
+        if (coverFilter === 'missing' && g.cover && !g.cover.includes('bing_')) return false;
+        if (coverFilter === 'bing' && (!g.cover || !g.cover.includes('bing_'))) return false;
+        return true;
+      });
+
+      if (sortField) {
+        filtered.sort((a, b) => {
+          const va = (a[sortField] || '').toString().toLowerCase();
+          const vb = (b[sortField] || '').toString().toLowerCase();
+          return va.localeCompare(vb) * sortDir;
+        });
+      }
+
+      document.getElementById('gameCount').textContent = `显示 ${filtered.length} / ${allGames.length} 个游戏`;
+      renderTable(filtered);
+    }
+
+    function sortBy(field) {
+      if (sortField === field) sortDir *= -1;
+      else { sortField = field; sortDir = 1; }
+      filterGames();
+    }
+
+    // 渲染表格
+    function renderTable(games) {
+      const tbody = document.getElementById('gamesTable');
+      const statusMap = { cleared: '已通关', completed: '全成就', playing: '游玩中', 'on-hold': '搁置', dropped: '放弃' };
+      
+      tbody.innerHTML = games.map(g => {
+        const coverUrl = g.cover ? (g.cover.startsWith('/') ? g.cover : g.cover) : '';
+        const tags = (g.tags || []).slice(0, 5).map(t => {
+          const cls = (t === '实战项目' || t === '小想法') ? 'tag-chip special' : 'tag-chip';
+          return `<span class="${cls}">${t}</span>`;
+        }).join('');
+        const moreTag = (g.tags || []).length > 5 ? `<span class="tag-chip">+${g.tags.length - 5}</span>` : '';
+
+        return `<tr ondblclick="openEditModal('${g.id.replace(/'/g, "\\'")}')">
+          <td>${coverUrl ? `<img class="game-cover-thumb" src="${coverUrl}" onerror="this.style.display='none'">` : '<div style="width:40px;height:53px;background:#212429;border-radius:3px"></div>'}</td>
+          <td><div class="game-title">${g.isAnchor ? '🔥 ' : ''}${g.title}</div></td>
+          <td><span class="status-badge status-${g.playStatus}">${statusMap[g.playStatus] || g.playStatus || '-'}</span></td>
+          <td>${tags}${moreTag}</td>
+          <td style="color:var(--text-dim);font-size:12px">${g.appId || '-'}</td>
+          <td style="font-size:12px;color:var(--text-dim)">${g.cover ? '✅' : '❌'}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="openEditModal('${g.id.replace(/'/g, "\\'")}')">✏️ 编辑</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    // 打开编辑模态框
+    function openEditModal(id) {
+      const game = allGames.find(g => g.id === id);
+      if (!game) return;
+
+      document.getElementById('editId').value = game.id;
+      document.getElementById('editTitle').value = game.title || '';
+      document.getElementById('editAppId').value = game.appId || '';
+      document.getElementById('editStatus').value = game.playStatus || 'playing';
+      document.getElementById('editPlaytime').value = game.playtime || '';
+      document.getElementById('editTags').value = (game.tags || []).join(', ');
+      document.getElementById('editWeight').value = game.orderWeight || 0;
+      document.getElementById('editAnchor').checked = game.isAnchor || false;
+      document.getElementById('editShowPlaytime').checked = game.showPlaytime || false;
+      document.getElementById('editReview').value = game.reviewFile || '';
+      document.getElementById('editRemark').value = game.remark || '';
+      document.getElementById('steamAppIdInput').value = game.appId || '';
+      
+      const coverPreview = document.getElementById('editCoverPreview');
+      coverPreview.src = game.cover || '';
+      coverPreview.style.display = game.cover ? 'block' : 'none';
+
+      document.getElementById('modalTitle').textContent = `编辑: ${game.title}`;
+      document.getElementById('deleteBtn').classList.remove('hidden');
+      document.getElementById('editModal').classList.remove('hidden');
+    }
+
+    // 打开添加模态框
+    function openAddModal() {
+      document.getElementById('editId').value = '';
+      document.getElementById('editTitle').value = '';
+      document.getElementById('editAppId').value = '';
+      document.getElementById('editStatus').value = 'playing';
+      document.getElementById('editPlaytime').value = '';
+      document.getElementById('editTags').value = '';
+      document.getElementById('editWeight').value = '0';
+      document.getElementById('editAnchor').checked = false;
+      document.getElementById('editShowPlaytime').checked = false;
+      document.getElementById('editReview').value = '';
+      document.getElementById('editRemark').value = '';
+      document.getElementById('steamAppIdInput').value = '';
+      document.getElementById('editCoverPreview').style.display = 'none';
+      
+      document.getElementById('modalTitle').textContent = '添加新游戏';
+      document.getElementById('deleteBtn').classList.add('hidden');
+      document.getElementById('editModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('editModal').classList.add('hidden');
+    }
+
+    // 保存游戏
+    async function saveGame() {
+      const id = document.getElementById('editId').value;
+      const data = {
+        title: document.getElementById('editTitle').value.trim(),
+        appId: document.getElementById('editAppId').value.trim(),
+        playStatus: document.getElementById('editStatus').value,
+        playtime: document.getElementById('editPlaytime').value.trim(),
+        tags: document.getElementById('editTags').value.split(/[,，]/).map(t => t.trim()).filter(Boolean),
+        orderWeight: parseInt(document.getElementById('editWeight').value) || 0,
+        isAnchor: document.getElementById('editAnchor').checked,
+        showPlaytime: document.getElementById('editShowPlaytime').checked,
+        reviewFile: document.getElementById('editReview').value.trim() || null,
+        remark: document.getElementById('editRemark').value.trim() || null,
+      };
+
+      if (!data.title) return toast('游戏名称不能为空', 'error');
+
+      try {
+        let r;
+        if (id) {
+          r = await fetch(`/api/games/${encodeURIComponent(id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        } else {
+          r = await fetch('/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        }
+        const result = await r.json();
+        if (result.success) {
+          toast(id ? '保存成功' : '添加成功');
+          closeModal();
+          loadGames();
+        } else {
+          toast(result.error || '操作失败', 'error');
+        }
+      } catch (e) {
+        toast('请求失败: ' + e.message, 'error');
+      }
+    }
+
+    // 删除游戏
+    async function deleteGame() {
+      const id = document.getElementById('editId').value;
+      const title = document.getElementById('editTitle').value;
+      if (!confirm(`确定删除「${title}」？此操作不可撤销！`)) return;
+
+      try {
+        const r = await fetch(`/api/games/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        const result = await r.json();
+        if (result.success) {
+          toast('已删除: ' + title);
+          closeModal();
+          loadGames();
+        }
+      } catch (e) {
+        toast('删除失败', 'error');
+      }
+    }
+
+    // 上传封面
+    async function uploadCover() {
+      const id = document.getElementById('editId').value;
+      if (!id) return toast('请先保存游戏再上传封面', 'error');
+      
+      const file = document.getElementById('coverUpload').files[0];
+      if (!file) return;
+
+      const fd = new FormData();
+      fd.append('cover', file);
+      
+      try {
+        const r = await fetch(`/api/covers/${encodeURIComponent(id)}`, { method: 'POST', body: fd });
+        const result = await r.json();
+        if (result.success) {
+          document.getElementById('editCoverPreview').src = result.cover + '?t=' + Date.now();
+          document.getElementById('editCoverPreview').style.display = 'block';
+          toast('封面已上传');
+          loadGames();
+        }
+      } catch (e) {
+        toast('上传失败', 'error');
+      }
+    }
+
+    // 一键自动抓取（封面 + 标签 + 名称）
+    async function autoFetchSteam() {
+      const id = document.getElementById('editId').value;
+      const appId = document.getElementById('steamAppIdInput').value.trim();
+      if (!appId) return toast('请输入Steam AppID', 'error');
+
+      const status = document.getElementById('fetchStatus');
+      status.innerHTML = '⏳ 正在抓取封面...';
+
+      // 1. 抓取封面
+      if (id) {
+        try {
+          const r = await fetch(`/api/covers/${encodeURIComponent(id)}/steam`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ appId }) });
+          const result = await r.json();
+          if (result.success) {
+            document.getElementById('editCoverPreview').src = result.cover + '?t=' + Date.now();
+            document.getElementById('editCoverPreview').style.display = 'block';
+            status.innerHTML = '✅ 封面OK ⏳ 正在抓取标签...';
+          } else {
+            status.innerHTML = '❌ 封面失败 ⏳ 正在抓取标签...';
+          }
+        } catch (e) {
+          status.innerHTML = '❌ 封面失败 ⏳ 正在抓取标签...';
+        }
+      } else {
+        status.innerHTML = '⚠️ 请先保存游戏再抓封面 ⏳ 正在抓取标签...';
+      }
+
+      // 2. 抓取标签 + 名称
+      try {
+        const r = await fetch(`/api/tags/steam/${appId}`, { method: 'POST' });
+        const result = await r.json();
+        if (result.tags && result.tags.length > 0) {
+          const existing = document.getElementById('editTags').value;
+          const existingTags = existing.split(/[,，]/).map(t => t.trim()).filter(Boolean);
+          const merged = [...new Set([...existingTags, ...result.tags])];
+          document.getElementById('editTags').value = merged.join(', ');
+          
+          // 如果游戏名为空，自动填入Steam上的名字
+          if (!document.getElementById('editTitle').value.trim() && result.name) {
+            document.getElementById('editTitle').value = result.name;
+          }
+          
+          status.innerHTML = `✅ 完成！封面 + ${result.tags.length}个标签`;
+          document.getElementById('editAppId').value = appId;
+        } else {
+          status.innerHTML += ' ❌ 标签获取失败';
+        }
+      } catch (e) {
+        status.innerHTML += ' ❌ 标签获取失败';
+      }
+      
+      loadGames();
+      setTimeout(() => { status.innerHTML = ''; }, 5000);
+    }
+
+    // Steam 封面抓取（单独）
+    async function fetchSteamCover() {
+      const id = document.getElementById('editId').value;
+      const appId = document.getElementById('steamAppIdInput').value.trim();
+      if (!id) return toast('请先保存游戏', 'error');
+      if (!appId) return toast('请输入Steam AppID', 'error');
+
+      toast('正在从Steam下载封面...');
+      try {
+        const r = await fetch(`/api/covers/${encodeURIComponent(id)}/steam`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ appId }) });
+        const result = await r.json();
+        if (result.success) {
+          document.getElementById('editCoverPreview').src = result.cover + '?t=' + Date.now();
+          document.getElementById('editCoverPreview').style.display = 'block';
+          document.getElementById('editAppId').value = appId;
+          toast('Steam封面下载成功');
+          loadGames();
+        } else {
+          toast(result.error, 'error');
+        }
+      } catch (e) {
+        toast('抓取失败', 'error');
+      }
+    }
+
+    // Steam 标签抓取
+    async function fetchSteamTags() {
+      const appId = document.getElementById('steamAppIdInput').value.trim() || document.getElementById('editAppId').value.trim();
+      if (!appId) return toast('请输入Steam AppID', 'error');
+
+      toast('正在从Steam抓取标签...');
+      try {
+        const r = await fetch(`/api/tags/steam/${appId}`, { method: 'POST' });
+        const result = await r.json();
+        if (result.tags && result.tags.length > 0) {
+          const existing = document.getElementById('editTags').value;
+          const existingTags = existing.split(/[,，]/).map(t => t.trim()).filter(Boolean);
+          const merged = [...new Set([...existingTags, ...result.tags])];
+          document.getElementById('editTags').value = merged.join(', ');
+          toast(`抓到 ${result.tags.length} 个标签`);
+        } else {
+          toast('没有找到标签', 'error');
+        }
+      } catch (e) {
+        toast('抓取失败', 'error');
+      }
+    }
+
+    // 备份
+    async function backup() {
+      try {
+        const r = await fetch('/api/backup', { method: 'POST' });
+        const result = await r.json();
+        if (result.success) toast('备份成功');
+      } catch (e) {
+        toast('备份失败', 'error');
+      }
+    }
+
+    // 部署
+    async function deploy() {
+      if (!confirm('确定构建并部署到GitHub Pages？')) return;
+      try {
+        const r = await fetch('/api/deploy', { method: 'POST' });
+        const result = await r.json();
+        toast('部署已启动，请查看终端');
+      } catch (e) {
+        toast('部署失败', 'error');
+      }
+    }
+
+    // ESC 关闭模态框
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
+</body>
+</html>
